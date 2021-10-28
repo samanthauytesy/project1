@@ -27,7 +27,10 @@ Paragraph or two introducing your datasets and variables, why they are interesti
 
 ```{R}
 # read your datasets in here, e.g., with read_csv()
+library(tidyverse)
+dataset1 <- read_csv("medicaldata.csv")
 
+head(dataset1)
 ```
 
 #### Tidying: Reshaping
