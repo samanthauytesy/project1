@@ -19,7 +19,7 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### General Instructions
+### Samantha Uy Tesy
 
 Your project will be completed in a single Rmd file called index.Rmd. Clone the following repository, which contains the instructions and template: https://github.com/nathanielwoodward/project1.git
 
@@ -235,7 +235,33 @@ If it is easier for you, and in case you don't have many packages installed, a l
 
 ...
 
+vaccinations1 <- vaccinations %>%
+  select(Geography, `Group Category`, `Sample Size`, `Indicator Category`) %>%
+  mutate(vax_status =
+         # recode 0 is not vaccinated and will not get vaccine, 1 is vaccinated or will get vaccinated
+         case_when(
+          `Indicator Category` == "Vaccinated (≥1 dose)"~1,
+          `Indicator Category` =="Definitely Will Get Vaccinated"~1,
+          `Indicator Category` =="Probably Will Get Vaccinated or Are Unsure"~1,
+          `Indicator Category` == "Probably or Definitely Will Not Get Vaccinated"~0,
+    )
+  ) %>%
+  mutate(age_group =
+         # clean up age group names
+         case_when(
+          `Group Category` == "18 â€“ 49 years"~"18-49",
+          `Group Category` == "50 â€“ 64 years"~"50-64",
+          `Group Category` =="	65+ years"~"65+"
+    )
+  ) %>%
+  select(-`Indicator Category`,-`Group Category`) %>%
+  group_by(Geography, vax_status) %>%
+  summarise(total = sum(`Sample Size`)) 
 
+vaccinations1 %>%
+  pivot_wider(names_from = "vax_status", values_from="total") %>%
+  rename(no_to_vax = "0",
+         yes_to_vax = "1")
 
 
 

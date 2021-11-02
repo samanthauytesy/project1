@@ -1533,8 +1533,8 @@ div.tocify {
 
 <div id="data-wrangling-exploration-visualization" class="section level2">
 <h2>Data Wrangling, Exploration, Visualization</h2>
-<div id="general-instructions" class="section level3">
-<h3>General Instructions</h3>
+<div id="samantha-uy-tesy" class="section level3">
+<h3>Samantha Uy Tesy</h3>
 <p>Your project will be completed in a single Rmd file called index.Rmd. Clone the following repository, which contains the instructions and template: <a href="https://github.com/nathanielwoodward/project1.git" class="uri">https://github.com/nathanielwoodward/project1.git</a></p>
 <p>When you have finished your project, save all changes and</p>
 <p>Submit a link to the Github repository containing your project to Canvas before the due date. Your project should also be live at your_username.github.io/project1 and linked to from your homepage. See the last step (6) in this document for how to set this up. Failure to have this done before the deadline will result in a late deduction.</p>
@@ -1724,6 +1724,8 @@ git push origin main</code></pre>
 <p><a href="www.census.gov">U.S. Census Bureau</a></p>
 <p><a href="www.gapminder.org/data">Gapminder</a>, data about the world.</p>
 <p>…</p>
+<p>vaccinations1 &lt;- vaccinations %&gt;% select(Geography, <code>Group Category</code>, <code>Sample Size</code>, <code>Indicator Category</code>) %&gt;% mutate(vax_status = # recode 0 is not vaccinated and will not get vaccine, 1 is vaccinated or will get vaccinated case_when( <code>Indicator Category</code> == “Vaccinated (≥1 dose)”~1, <code>Indicator Category</code> ==“Definitely Will Get Vaccinated”~1, <code>Indicator Category</code> ==“Probably Will Get Vaccinated or Are Unsure”~1, <code>Indicator Category</code> == “Probably or Definitely Will Not Get Vaccinated”~0, ) ) %&gt;% mutate(age_group = # clean up age group names case_when( <code>Group Category</code> == “18 â€“ 49 years”~“18-49”, <code>Group Category</code> == “50 â€“ 64 years”~“50-64”, <code>Group Category</code> ==&quot; 65+ years“~”65+&quot; ) ) %&gt;% select(-<code>Indicator Category</code>,-<code>Group Category</code>) %&gt;% group_by(Geography, vax_status) %&gt;% summarise(total = sum(<code>Sample Size</code>))</p>
+<p>vaccinations1 %&gt;% pivot_wider(names_from = “vax_status”, values_from=“total”) %&gt;% rename(no_to_vax = “0”, yes_to_vax = “1”)</p>
 </div>
 </div>
 </div>

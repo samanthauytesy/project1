@@ -19,76 +19,255 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Samantha Uy Tesy
 
-#### Introduction 
+#### Introduction
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+**Write a narrative introductory paragraph or two describing the datasets you have chosen, the variables they contain, how they were acquired, and why they are interesting to you. Expand on potential associations you may expect, if any.
+
+What effect access to health care insurance have on COVID-19 deaths in each state? This analysis explores how accessibility to health care, a growing problem in the United States, may have prevented individuals who were sick from seeking medical treatment. 
+
+"Indicators of Health Insurance Coverage" (`insurance_data`) supplies census-type data from interviews on insurance status during the COVID-19 pandemic. "Provisional Death Counts for Influenza, Pneumonia, and COVID-19" supplies demographic and state data over COVID-19 testing, including number of positives, negatives, and deaths as a result of COVID-19, Pneumonia, or Influenza from January 1, 2020 to date. Both datasets were acquired from Kaggle.com. In this analysis, we will be looking at "peak" COVID-19 months, so I expect to find high rates of infection and death as well as some relationship between proportion died to proportion insured for each state. 
 
 ```{R}
-# read your datasets in here, e.g., with read_csv()
+# load libraries
 library(tidyverse)
-dataset1 <- read_csv("medicaldata.csv")
+library(dplyr)
+library(kableExtra)
+library(ggplot2)
 
-head(dataset1)
+# read csv files
+covid_data <- read_csv("us_states_covid19_daily.csv")
+insurance_data <- read_csv("insurance.csv")
+
+# inspecting data
+head(covid_data)
+head(insurance_data)
 ```
 
-#### Tidying: Reshaping
+## Tidying
+#### Preliminary Cleaning
 
-If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
+Tidying and reshaping will be broken up into two steps: "Preliminary Cleaning" and "Reshaping". I will first be cleaning the data because it take a sufficient amount of cleaning to properly join later on, then I will reshape in the subsequent next steps. The two tables have different date formats and time periods that do not match up. Therefore, I will first transform the `date` variable in covid_data into a numeric and match based on the formatting of `Time Period Label` in insurance_data. 
 
-```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
+```{r}
+# manually tidy data to for subsequent join
+
+# turn date variable into numeric
+covid_data$date<-covid_data$date%>% as.numeric()
+
+# match date and relabel for subsequent match insurance_data.csv 
+first_week <- filter(covid_data, between(covid_data$date, "20200423", "20200505")) %>% mutate(`Time Period Label` = "Apr 23 - May 5, 2020")
+second_week <- filter(covid_data, between(covid_data$date, "20200507", "20200512")) %>% mutate(`Time Period Label` = "May 7 - May 12, 2020")
+third_week <- filter(covid_data, between(covid_data$date, "20200514", "20200519")) %>% mutate(`Time Period Label` = "May 14 - May 19, 2020")
+fourth_week <- filter(covid_data, between(covid_data$date, "20200521", "20200526")) %>% mutate(`Time Period Label` = "May 21 - May 26, 2020")
+fifth_week <- filter(covid_data, between(covid_data$date, "20200528", "20200602")) %>% mutate(`Time Period Label` = "May 28 - June 2, 2020")
+sixth_week <- filter(covid_data, between(covid_data$date, "20200604", "20200609")) %>% mutate(`Time Period Label` = "June 4 - June 9, 2020")
+seventh_week <- filter(covid_data, between(covid_data$date, "20200611", "20200616")) %>% mutate(`Time Period Label` = "June 11 - June 16, 2020")
+eighth_week <- filter(covid_data, between(covid_data$date, "20200618", "20200623")) %>% mutate(`Time Period Label` = "June 18 - June 23, 2020")
+ninth_week <- filter(covid_data, between(covid_data$date, "20200625", "20200630")) %>% mutate(`Time Period Label` = "June 25 - June 30, 2020")
+
+# combine data for dates of interest
+covid_new_data<- rbind(rbind(rbind(rbind(rbind(rbind(rbind(rbind(first_week, second_week), third_week), fourth_week), fifth_week), sixth_week), seventh_week), eighth_week), ninth_week)
+
+# remove subgroup for convenience and filter by state to remove other demographic data
+insurance_data_1 <- insurance_data %>% select(-Subgroup) %>% filter(Group == "By State")
+
+# recode State data into state codes for joining
+insurance_data_1$State <- state.abb[match(insurance_data_1$State, state.name)] 
 ```
 
-    
+#### Reshaping Data
+
+Now, I will pivot the data to a more intuitive format. I used the `pivot_wider()` function to take the pivot the rows in "Indicator", which describe insurance status (uninsured, publicly insured, and privately insured), and "Values" which describe the proportion of the population in each group, and transform them into a single column. 
+
+```{r}
+# reshaping data 
+insurance_data_clean <- insurance_data_1 %>% 
+  select(State, `Time Period Label`, Indicator, Value) %>% 
+  # use pivot_wider to transform the row data into a column for the proportion uninsured
+  pivot_wider(names_from = Indicator, values_from = Value) %>% 
+  # arrange by state for data validation
+  arrange(State)
+
+#head(insurance_data_clean)
+```
+
+
+
 #### Joining/Merging
 
-```{R}
-# your joining code
+I will use a left join to join the tidy `insurance` data to the tidy `covid` data. Using the `left_join()` function insures that the necessary data from the `covid` dataset (e.g. `positive` [results], `deaths`, etc.) is preserved in the process. The data was joined by 2 unique IDs to ensure the data matched correctly by `Time Period Label` and `State`. 
 
-# your joining code
-```
+```{r}
+# join data employing a left join, join by 2 IDs that do not have same variable name
+joined_data <- left_join(covid_new_data, insurance_data_clean, by="Time Period Label", c("state"="State"))
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+# final clean of joined data
+joined_data_clean <- joined_data %>%
+  select(state, State,"Time Period Label", positive, negative, totalTestResults, death, "Uninsured at the Time of Interview") %>%
+  # remove duplicates
+  filter(state == State) %>%
+  select(-State)
 
-####  Wrangling
+joined_data_clean
+```    
 
-```{R}
-# your wrangling code
+There are no missing IDs in the joined dataset. Since both datasets were formatted and organized in the preliminary cleaning stage, their information match up by demographic and time. However, the rows required some wrangling before joining. For example, the insurance data had a "Group" column, which I filtered into "States", so the data was identifiable by state, only. Furthermore, the dates in covid_data were in a daily format, so they were wrangled to match the time periods in insurance_data.  
 
-# your wrangling code
+There were a total of 15,633 observations in covid_data and 8,217 observations in the `insurance` data. After joining and cleaning, the final dataset has 3050 observations, which are each of the dates of interest for each of the 50 states. There were several observations that were dropped for the final dataset, but most if not all rows that were dropped were not variables of interest (e.g. gender, race) or fell out of the desired time interval of interest. The size of joined_data_clean is considerably smaller, but it is important to note it is a 3 month subsample and only state data was pulled.
 
-# your wrangling code
-```
+## Wrangling
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+In the following code block, I added two columns, `prop tested positive`, which finds the proportion of positives over the number of individuals who took the test, and `prop died` which finds the proportion of deaths over the number of individuals who tested positive (for each time period for every state). Using final_data, I applied various data wrangling techniques to create summary statistics by subgroup and for the entire data set. 
 
+1. Table 1 shows the first 6 observations of the finalized dataset to be used in subsequent tables
+2. Table 2 shows summary statistics grouped by month
+3. Table 3 shows each variables mean for each state
+3. Table 4 is an interactive table that shows summary statistics for each state
+4. Table 5 shows how many NA variables there for each column in final_data
 
-#### Visualizing
-
-```{R}
-# your plot 1
-```
-
-Your discussion of plot 1
-
-```{R}
-# your plot 2
-```
-
-Your discussion of plot 2
+Note: The `filter()` function is not used here as there was some datawrangling in the preliminary cleaning stages. 
 
 ```{R}
-# your plot 3
+# wrangling 1: add columns
+final_data  <- joined_data_clean %>%
+  # create two variables as proportions of total tests
+  mutate(
+    "prop tested positive" = positive/totalTestResults,
+    "prop died" = death/positive,
+    month = substr(`Time Period Label`,1,3)
+  )
+
+# examine column headings
+#colnames(final_data) 
+
+# convert column names into similar format for convenient wrangling using regex
+names(final_data)[5]<- gsub("([a-z])([A-Z])", "\\1 \\2", colnames(final_data[5])) %>% str_to_lower()
+names(final_data)[2]<- str_to_lower(colnames(final_data[2]))
+names(final_data)[7]<- str_to_lower(colnames(final_data[7]))
+
+# final data table  
+final_data %>%
+  select(-`time period label`) %>%
+  head()
+
+# wrangling 2: grouped summary statistics
+
+### this code was written as per the instructions, but since the data was collected at the state level for a specific time period, their are an identical time period observations for each "category"
+count_data <- final_data %>%
+  group_by(state) %>%
+  summarize(n=n())
+
+# did not print as it is redundant
+#count_data
+
+# monthly means
+monthly_mean <- final_data %>%
+  group_by(month) %>% summarize_if(is.numeric, mean, na.rm=T) %>%
+  arrange(desc(positive))
+
+monthly_mean
+
+state_mean <- final_data %>%
+  group_by(state) %>% summarize_if(is.numeric, mean, na.rm=T) %>%
+  arrange(desc(positive))
+
+head(state_mean)
+  
+# wrangling 3: state summary statistics for number of deaths
+
+state_summary <- final_data %>%
+  group_by(state) %>%
+  summarize(avg_perc_uninsured = mean(`uninsured at the time of interview`, na.rm = T),
+            avg_prop_death = mean(`prop died`),
+            median_value = median(death),
+            sd_death = sd(death),
+            var_death = var(death),
+            max_death = max(death),
+            min_pos = min(positive)
+  )
+
+
+# html kable summary statistics table                                                        
+state_summary %>%
+  group_by(state) %>%
+  kbl() %>%
+  kable_material(c("hover"))
+
+final_data %>%
+  summarize_all(function(x)sum(is.na(x))) %>%
+  kbl() %>%
+  kable_styling()
+
 ```
 
-Your discussion of plot 3
+Some interesting characteristics about the summary data: Table 2 shows that the number of uninsured at the time of interview did not change by much. Furthermore, the proportion of those who tested positive decreased (`positive`) from April to June while the proportion who died (`prop died`) remained approximately constant all 3 months. Overall, during this time period, New York had the highest number of positive cases from April to June. Lastly, there are only 96 NA values and it is only for the `uninsured at the time of interview` variable, but this is due to the considerable wrangling done at the preliminary stage. 
+
+
+## Visualizing
+
+- Write a supporting paragraph (for each plot) describing what the plot depicts and any relationships/trends that are apparent (9 pts)
+
+```{R}
+# scatter plot
+state_summary %>% ggplot(aes(avg_perc_uninsured, avg_prop_death)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  theme_classic() +
+  labs(title = "Relationship between Number of Deaths by Percent Uninsured per State",
+       subtitle = "From April to June of 2020",
+       x = "Average Proportion of Uninsured",
+       y = "Average Proportion of Deaths") +
+       # rename tick labels and remove white space
+       scale_x_continuous(labels=c("5" = "5%", "10" = "10%", "15"="15%", "20"="20%", "25"="25%"),expand = c(0.01,0))
+```
+
+This scatter plot, which plots average proportion of deaths to average proportion uninsured, appears to show that there is a negative linear relationship between the two variables. This is interesting because initially, I thought the inverse would be true. A possible explaination for this is that during peak pandemic, deaths may have been misclassified as "Unknown" due to the volume of patients in the hospital, so the data during this period could be inaccurate.  
+
+```{R}
+# histogram
+final_data %>% ggplot(aes(x=`uninsured at the time of interview`)) +
+	geom_histogram(aes(y=..density..), bins=10) + 
+  geom_density(color="black") +
+  facet_wrap(~month, scales = "free") +
+  theme_classic() +
+  labs(title = "Distribution of Uninsured by Month",
+       subtitle = "2020 Data",
+       x = "Proportion of Uninsured",
+       y = "Count") +
+  # change breaks and remove white space
+  scale_x_continuous(breaks=seq(0, 35, 5), expand = c(0.02,0)) +
+  scale_y_continuous(breaks = seq(0, 1, 0.025), expand = c(0.01,0))
+```
+
+This histogram shows the distribution of proportion unisured in the months of April, May, and June. April and June's distribution is right-skewed while May is less skwewed. 
+
+```{R}
+# bar plot
+# find mean deaths
+#mean(final_data$`prop died`)
+
+final_data %>%
+  # reorder y-axis in order from greatest to least proportion
+  ggplot(aes(y= reorder(state, `prop died`),x=`prop died`)) +
+  geom_bar(stat = "summary") +
+  # add a geom vertical line layer to show average proportion dead in U.S. 
+  geom_vline(xintercept =  0.04159294, linetype="dashed", color = "grey") +
+  # modify theme to resize font to fit text
+  theme(axis.text.y = element_text (size=6)) +
+  labs(
+    title = "Proportion Died of Covid by State",
+    subtitle = "From April to June of 2020",
+    x = "Proportion",
+    y = ""
+  ) +
+  # change the breaks from 0.005 to 0.0025 for accuracy, remove white space with expand function
+  scale_x_continuous(breaks = seq(0, 1, 0.01),expand = c(0,0))
+```
+
+This last bar graph shows a summary of the proportion of individuals who tested positive and died per state. The vertical line shows the average proportion of deaths in the United States. It appears that there was a considerable amount of states with greater than 50% fatality. However, a possible explanation for this is at the time the data was collected, only certain individuals were tested for COVID-19. The tests were not yet publicly available to everyone, which may make the results appear more drastic. 
 
 #### Concluding Remarks
 
-If any!
-
-
-
-
+Overall, this analysis did not find any evidence to suggest that the state's proportion insured increased the number of deaths per state, but further analysis into confounding variables may yield more accurate concluations about the true relationship. 
