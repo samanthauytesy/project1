@@ -23,8 +23,6 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 #### Introduction
 
-**Write a narrative introductory paragraph or two describing the datasets you have chosen, the variables they contain, how they were acquired, and why they are interesting to you. Expand on potential associations you may expect, if any.
-
 What effect access to health care insurance have on COVID-19 deaths in each state? This analysis explores how accessibility to health care, a growing problem in the United States, may have prevented individuals who were sick from seeking medical treatment. 
 
 "Indicators of Health Insurance Coverage" (`insurance_data`) supplies census-type data from interviews on insurance status during the COVID-19 pandemic. "Provisional Death Counts for Influenza, Pneumonia, and COVID-19" supplies demographic and state data over COVID-19 testing, including number of positives, negatives, and deaths as a result of COVID-19, Pneumonia, or Influenza from January 1, 2020 to date. Both datasets were acquired from Kaggle.com. In this analysis, we will be looking at "peak" COVID-19 months, so I expect to find high rates of infection and death as well as some relationship between proportion died to proportion insured for each state. 
